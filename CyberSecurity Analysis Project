@@ -1,0 +1,67 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import classification_report
+from sklearn.tree import DecisionTreeClassifier
+import matplotlib.pyplot as plt
+
+# --- Step 1: Load and train Fake News Detector ---
+news_df = pd.read_csv('cyber_news.csv')
+
+X = news_df['text']
+y = news_df['label']
+
+vectorizer = TfidfVectorizer(stop_words='english', max_features=5000)
+X_vec = vectorizer.fit_transform(X)
+
+X_train, X_test, y_train, y_test = train_test_split(X_vec, y, test_size=0.2, random_state=42)
+
+model = LogisticRegression(max_iter=1000)
+model.fit(X_train, y_train)
+
+y_pred = model.predict(X_test)
+print("=== Fake News Detector Performance ===")
+print(classification_report(y_test, y_pred))
+
+# --- Step 1b: Input your own news headline and predict ---
+user_input = input("\nEnter a news headline to check if it's Real or Fake: ")
+user_vec = vectorizer.transform([user_input])
+prediction = model.predict(user_vec)[0]
+
+if prediction == 1:
+    print("Prediction: Real News ")
+else:
+    print("Prediction: Fake News ")
+
+# --- Step 2: Visualize Cyber Attack Patterns ---
+attack_df = pd.read_csv('cyber_attacks.csv', parse_dates=['date'])
+attack_df['month'] = attack_df['date'].dt.to_period('M')
+attacks_per_month = attack_df.groupby(['month', 'attack_type']).size().unstack(fill_value=0)
+
+plt.figure(figsize=(10, 5))
+attacks_per_month.plot(marker='o')
+plt.title("Cyber Attack Patterns Over Time")
+plt.xlabel("Month")
+plt.ylabel("Number of Attacks")
+plt.grid(True)
+plt.legend(title='Attack Type')
+plt.tight_layout()
+plt.show()
+
+# --- Step 3: Predict Likely Cyber Attack Targets ---
+target_df = pd.read_csv('attack_targets.csv')
+
+target_df_encoded = pd.get_dummies(target_df, columns=['industry', 'country'])
+
+X = target_df_encoded.drop('next_target', axis=1)
+y = target_df_encoded['next_target']
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+clf = DecisionTreeClassifier()
+clf.fit(X_train, y_train)
+
+y_pred = clf.predict(X_test)
+print("\n=== Cyber Attack Target Prediction Performance ===")
+print(classification_report(y_test, y_pred))
